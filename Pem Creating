@@ -1,7 +1,6 @@
 import os
 from zipfile import ZipFile
 
-
 for type in glob.glob("*zip"):
    with ZipFile(type) as unzip:
       unzip.extractall()
