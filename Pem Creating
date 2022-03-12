@@ -43,7 +43,6 @@ def unzip_files():
                 y = str(f.stem)
     return x, y
 
-
 def Check_pem():
     if not os.path.exists(PEM_FOLDER):
         os.mkdir(PEM_FOLDER)
@@ -52,7 +51,6 @@ def Check_pem():
         messagebox.showinfo("Error", "The Pem already exist\nPlease remove the required files and then try again")
         print("there is a Pem file - remove the files and than active the script again")
         exit()
-
 
 def Change_name(name):
     files = []
@@ -70,14 +68,12 @@ def Change_name(name):
         if 'p7b' in f:
             os.remove(f)
 
-
 def Pem_create(pem):
     with open(new_location + '\\' + pem + '.pem', 'w') as myfile:
         for name in type_1:
             with open(name) as merge:
                 myfile.write(merge.read())
                 myfile.write("\n")
-
 
 if __name__ == "__main__":
     main()
