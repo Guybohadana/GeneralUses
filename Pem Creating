@@ -1,6 +1,83 @@
+import zipfile
+from pathlib import Path
 import os
-from zipfile import ZipFile
+import shutil
+import glob
+from tkinter import *
+from tkinter import messagebox
 
-for type in glob.glob("*zip"):
-   with ZipFile(type) as unzip:
-      unzip.extractall()
+root = Tk()
+root.geometry("300x200")
+temp = 'temp.txt'
+PARENT_PATH = os.getcwd()
+PEM_FOLDER = os.path.join(PARENT_PATH, "PEM")
+new_location = r'' + str(PEM_FOLDER)
+type_1 = ['Certificate.crt', 'Ca_bundle.crt', 'Private.key']
+x = ""  # key
+y = ""  # regular
+print("Guy b- pem creation")
+print("Starting PEM creation")
+
+
+def main():
+    Check_pem()
+    files_names = unzip_files()
+    file_a = os.path.join(PARENT_PATH, files_names[0])
+    file_b = os.path.join(PARENT_PATH, files_names[1])
+    Change_name(file_a)
+    Change_name(file_b)
+    shutil.move(os.path.join(file_a, type_1[2]), file_b)
+    os.rmdir(os.path.join(PARENT_PATH, files_names[0]))
+    Pem_create(files_names[1])
+    #os.rename(temp, files_names[1] + ".pem")
+
+
+def unzip_files():
+    p = Path('.')
+    for f in p.glob('*.zip'):
+        with zipfile.ZipFile(f, 'r') as archive:
+            archive.extractall(path=f'./{f.stem}')
+            if 'key' in str(f.stem):
+                x = str(f.stem)
+            else:
+                y = str(f.stem)
+    return x, y
+
+
+def Check_pem():
+    if not os.path.exists(PEM_FOLDER):
+        os.mkdir(PEM_FOLDER)
+        print("Pem folder created")
+    else:
+        messagebox.showinfo("Error", "The Pem already exist\nPlease remove the required files and then try again")
+        print("there is a Pem file - remove the files and than active the script again")
+        exit()
+
+
+def Change_name(name):
+    files = []
+    for f in os.listdir(name):
+        files.append(f)
+        if 'key' in f:
+            os.chdir(name)
+            os.rename(f, type_1[2])
+        if 'bundle' in f:
+            os.chdir(name)
+            os.rename(f, type_1[1])
+        if 'crt' in f:
+            os.chdir(name)
+            os.rename(f, type_1[0])
+        if 'p7b' in f:
+            os.remove(f)
+
+
+def Pem_create(pem):
+    with open(new_location + '\\' + pem + '.pem', 'w') as myfile:
+        for name in type_1:
+            with open(name) as merge:
+                myfile.write(merge.read())
+                myfile.write("\n")
+
+
+if __name__ == "__main__":
+    main()
