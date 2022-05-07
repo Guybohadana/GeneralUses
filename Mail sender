@@ -4,7 +4,7 @@ import schedule
 import time
 import smtplib
 # Prime details
-sender_email = "GuyPython3.9@gmail.com"
+sender_email = ""
 rec_email = 'guy@gmail.com' #'eli3@gmail.com']
 password = ""
 
