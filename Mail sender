@@ -1,48 +1,11 @@
 import itertools
-from yahoo_fin.stock_info import *
 import schedule
 import time
 import smtplib
-# Prime details
 sender_email = ""
 rec_email = 't@gmail.com' #'eli3@gmail.com']
 password = ""
 
-#Stock 1 
-stock_1 = 'AMD'
-Purched_stock1 = 133 
-max_amd = 0
-count = 0
-price_AMD=0
-
-
-def A(a):
-    price_AMD = (int(get_live_price("AMD")))  # 3
-    Stock(price_AMD, max_amd, Purched_stock1, stock_1)
-    return a
-
-def Stock(price,max,purched,stock_name):
-    global count, sender_email, rec_email, password
-    count = count + 1
-    if price > purched and price > (purched*(5/100))+(purched) and price < (purched*(30/100))+(purched) and count > 80:
-        if max < price:
-            max = price
-        message = str(
-        'Status - the ' + str(stock_name) + ' stock standing on ' + str(
-        price) + '$, there is growth of 5% or more\n' + 'The maximum price of the stock is: ' + str(max) + '\nI will keep you updating bro')
-        count = 0
-        mail_send(message)
-    if price > ((30 *(purched/100))+(purched)):
-        message = str(
-        'Hey! you should Sell ' + str(stock_name) + ' stock right now\n\nThere are profits over 30% \n\n' + str(stock_name) + ' stock price is ' + str(
-        price)+'$')
-        count = 0
-        mail_send(message)
-
-    if count <= 160 and count>=165 and price > purched and price < (15*(purched/100)) +(purched):
-        message = str('There is no change with ' + str(stock_name) + '\nTherefore the stock is stablethe\nThe new "bought" price is ' + str(max))
-        mail_send(message)
-        count = 0
 
 def mail_send(messages):
     server = smtplib.SMTP('smtp.gmail.com', 587)
