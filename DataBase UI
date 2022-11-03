@@ -1,0 +1,624 @@
+import sys
+from PyQt5 import *
+from PyQt5.QtCore import *
+from PyQt5.uic import loadUi
+from PyQt5 import QtWidgets, QtGui,QtCore
+from PyQt5.QtWidgets import QDialog, QApplication, QWidget, QMessageBox, QFileDialog, QTableWidget, QTableView,QTableWidgetItem,QComboBox
+from PyQt5.QtGui import *
+import sqlite3
+import csv,os
+from tkinter import ttk,filedialog
+from PIL import ImageTk, Image
+import pyodbc
+
+sql = pyodbc.connect('Driver={SQL Server};'
+                     'Server=GUY-LENOVO\SQLEXPRESS;'
+                     'Database=WP;'
+                     'Trusted_Connection=yes;')
+
+mydata = [['Customer', 'Type', 'Platform', 'Domain address', 'ip#1', 'ssh1', 'ip#2', 'ssh2', 'ip#3', 'ssh3',
+           'ip#4', 'ssh4', 'ip#5', 'ssh5', 'Pem']]
+
+class WelcomeScreen(QDialog):
+    def __init__(self):
+        super(WelcomeScreen, self).__init__()
+        loadUi("welcomescreen.ui",self)
+        self.dataentry.clicked.connect(self.gotodataentry)
+        self.dataretrival.clicked.connect(self.gotoretrival)
+        self.editdata.clicked.connect(self.gotoedit)
+        self.exitbutton.clicked.connect(self.closebutton)
+
+    def gotodataentry(self):
+        dataentry = DataEntryScreen()
+        widget.addWidget(dataentry)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def gotoretrival(self):
+        dataretrival = Dataretrival()
+        widget.addWidget(dataretrival)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def gotoedit(self):
+        edit = Dataedit()
+        widget.addWidget(edit)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def closebutton(self):
+        sys.exit(app.exec_())
+
+class Dataretrival(QDialog):
+    def __init__(self):
+        super(Dataretrival, self).__init__()
+        loadUi("Dataretrival.ui",self)
+        self.tableWidget.setColumnWidth(0,95)
+        self.tableWidget.setColumnWidth(1, 100)
+        self.tableWidget.setColumnWidth(2, 90)
+        self.tableWidget.setColumnWidth(3, 80)
+        self.tableWidget.setColumnWidth(4, 80)
+        self.tableWidget.setColumnWidth(5, 100)
+        self.tableWidget.setColumnWidth(6, 70)
+        self.tableWidget.setColumnWidth(7, 65)
+        self.tableWidget.setColumnWidth(8, 70)
+        self.tableWidget.setColumnWidth(9, 66)
+        self.tableWidget.setColumnWidth(10, 70)
+        self.tableWidget.setColumnWidth(11, 60)
+        self.tableWidget.setColumnWidth(12, 60)
+        self.tableWidget.setColumnWidth(13, 60)
+        self.tableWidget.setColumnWidth(14, 60)
+        self.backbutton.clicked.connect(self.backtohome)
+        self.exitbutton.clicked.connect(self.closebutton)
+        self.exporttbutton.clicked.connect(self.Exporttable)
+        self.viewbutton.clicked.connect(self.view)
+
+        ##########Drop List value############
+        query_cus = 'SELECT * FROM Customers'
+        id_cus = sql.cursor()
+        id_cus.execute(query_cus)
+        customer_sql = id_cus.fetchall()
+        customer_list = []
+        for i in range(0, len(customer_sql)):
+            customer_list.append(customer_sql[i][1])
+        self.customerfield.addItems(customer_list)
+
+    def backtohome(self):
+        welcomescreen = WelcomeScreen()
+        widget.addWidget(welcomescreen)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def closebutton(self):
+        sys.exit(app.exec_())
+
+    def Exporttable(self):
+        global mydata
+        num_a = ""
+        num_b = ""
+        check = False
+        valid = True
+        Serial_ex = self.serialex.text()
+        for y in Serial_ex:
+            if (y.isdigit() and check == False):
+                num_a += y
+            if (y == '-'):
+                check = True
+            if (check == True and y.isdigit()):
+                num_b += y
+            if (not y.isdigit() and y != '-' and y != ' '):
+                valid = False
+        if (num_b == ""):
+            num_b = num_a
+        if (num_a.isnumeric() and num_b.isnumeric() and valid == True):
+            if (int(num_a) > int(num_b)):
+                valid = False
+        else:
+            valid = False
+
+        query = 'SELECT MAX(ID) FROM Avatar'
+        id_ex = sql.cursor()
+        id_ex.execute(query)
+        output = id_ex.fetchall()
+        id_num = output[0][0]
+        Customer = self.customerfield.currentText()
+
+        if (valid == False):
+            msg = QMessageBox()
+            msg.setText("Invalid input, please follow the instructions\n\n                       try again")
+            t = msg.exec_()
+        elif (int(num_a) > id_num):
+            msg = QMessageBox()
+            msg.setText("There is no chain to specific serial number\n\n                  Please try again")
+            t = msg.exec_()
+        else:
+            save = 0
+            table = False
+            result = list
+            row_number = 0
+            range_num = range(int(num_a), int(num_b) + 1)
+            num_a = int(num_a)
+            num_b = int(num_b)
+            for y in range_num:
+                cursor = sql.cursor()
+                cursor.execute("""
+                        DECLARE @a int
+                        DECLARE @Mid_num int
+                        DECLARE @cust AS varchar(4000) 
+                                Set @a = ?
+                                set @cust = ?
+                                set @Mid_num = (select max (position) from vps where AvatarID  = @a) 
+                                SELECT distinct C.NAME as Customer,T.name as Type,vps.Platform, @Mid_num as 'Number of mid', D.Domain_address as [Domain address], vps.ip as ip1, vps.ssh as ssh1 , /*vp1.ip AS ip#1,vp1.ssh AS ssh#1, vp2.ip AS ip#2,vp2.ssh AS ssh#2 , vp3.ip AS ip#3,vp3.ssh AS ssh#3, vp4.ip AS ip#4,vp4.ssh AS ssh#4 , vp5.ip AS ip#4,vp5.ssh AS ssh#5 */
+
+                                CASE WHEN @Mid_num >= 1 THEN vp2.IP end ip2,
+                                CASE WHEN @Mid_num >= 1 THEN vp2.ssh end ssh2,
+
+                                CASE WHEN @Mid_num >= 2 THEN vp3.IP end ip3,
+                                CASE WHEN @Mid_num >= 2 THEN vp3.ssh end ssh3,
+
+                                CASE WHEN @Mid_num >= 3 THEN vp4.IP end ip4,
+                                CASE WHEN @Mid_num >= 3 THEN vp4.ssh end ssh4,
+
+                                CASE WHEN @Mid_num >= 4 THEN vp5.IP end ip5,
+                                CASE WHEN @Mid_num >= 4 THEN vp5.ssh end ssh5,
+                                D.Pem
+
+                                From Avatar A 
+                                left Join Vps on a.ID = vps.AvatarID
+                                left Join Vps vp2 on a.ID = vp2.AvatarID
+                                left Join Vps vp3 on a.ID = vp3.AvatarID
+                                left Join Vps vp4 on a.ID = vp4.AvatarID
+                                left Join Vps vp5 on a.ID = vp5.AvatarID
+                                left join Customers C on C.ID = A.CustomerID
+                                left join Type T on T.ID = vps.TypeID
+                                Left Join Domain D on D.ID = vps.DomainID
+                                WHERE
+                                C.Name =@cust and A.ID=@a
+                                and(
+                                (@Mid_num = 0 and vps.Position = 0) OR
+                                (@Mid_num = 1 and vps.Position = 0 and vp2.Position = 1) OR
+                                (@Mid_num = 2 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2) OR
+                                (@Mid_num = 3 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2 and vp4.Position = 3) OR
+                                (@Mid_num = 4 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2 and vp4.Position = 3 and vp5.Position = 4))
+                          """, num_a, Customer)
+                result = cursor.fetchall()
+                num_a = num_a + 1
+
+
+                for row_number, row_data in enumerate(result):
+                    self.tableWidget.insertRow(row_number)
+                    for column_number, data in enumerate(row_data):
+                        self.tableWidget.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+                        table= True
+                if(save == 0):
+                    path = QFileDialog.getSaveFileName(self, 'Save CSV', "ex.csv", os.getenv('HOME'), 'CSV(*.csv)')
+                with open(path[0], mode='w', encoding='UTF8', newline='') as myfile:
+                    exp_writer = csv.writer(myfile, delimiter=',')
+                    if(save == 0):
+                        for i in mydata:
+                            exp_writer.writerow(i)
+                            save += 1
+                    for row in result:
+                        calc = -1
+                        for num in row:
+                            calc += 1
+                            if(num is None):
+                                row[calc] = "Null"
+                        exp_writer.writerow(row)
+            print("save well")
+            msg1 = QMessageBox()
+            msg1.setText("Data Exported successfully.")
+            x = msg1.exec_()
+            cursor.commit()
+            cursor.close()
+
+    def view(self):
+        self.tableWidget.setRowCount(0)
+        num_a = ""
+        num_b = ""
+        check = False
+        valid = True
+        Serial_ex= self.serialex.text()
+        for y in Serial_ex:
+            if(y.isdigit() and check ==False):
+                num_a +=y
+            if(y == '-'):
+                check = True
+            if(check == True and y.isdigit()):
+                num_b +=y
+            if(not y.isdigit() and y !='-' and y !=' '):
+                valid=False
+        if (num_b == ""):
+            num_b = num_a
+        if(num_a.isnumeric() and num_b.isnumeric() and valid == True):
+            if(int(num_a) > int(num_b)):
+                valid = False
+        else:
+            valid=False
+
+
+        query = 'SELECT MAX(ID) FROM Avatar'
+        id_ex = sql.cursor()
+        id_ex.execute(query)
+        output = id_ex.fetchall()
+        id_num = output[0][0]
+        Customer = self.customerfield.currentText()
+
+        if (valid == False):
+            msg = QMessageBox()
+            msg.setText("Invalid input, please follow the instructions\n\n                       try again")
+            t = msg.exec_()
+        elif (int(num_a) > id_num):
+            msg = QMessageBox()
+            msg.setText("There is no chain to specific serial number\n\n                  Please try again")
+            t = msg.exec_()
+        else:
+            table = False
+            result = list
+            row_number = 0
+            range_num = range(int(num_a), int(num_b) + 1)
+            num_a = int(num_a)
+            num_b = int(num_b)
+            for y in range_num:
+                cursor = sql.cursor()
+                cursor.execute("""
+                DECLARE @a int
+                DECLARE @Mid_num int
+                DECLARE @cust AS varchar(4000) 
+                        Set @a = ?
+                        set @cust = ?
+                        set @Mid_num = (select max (position) from vps where AvatarID  = @a) 
+                        SELECT distinct C.NAME as Customer,T.name as Type,vps.Platform, @Mid_num as 'Number of mid', D.Domain_address as [Domain address], vps.ip as ip1, vps.ssh as ssh1 , /*vp1.ip AS ip#1,vp1.ssh AS ssh#1, vp2.ip AS ip#2,vp2.ssh AS ssh#2 , vp3.ip AS ip#3,vp3.ssh AS ssh#3, vp4.ip AS ip#4,vp4.ssh AS ssh#4 , vp5.ip AS ip#4,vp5.ssh AS ssh#5 */
+                        
+                        CASE WHEN @Mid_num >= 1 THEN vp2.IP end ip2,
+                        CASE WHEN @Mid_num >= 1 THEN vp2.ssh end ssh2,
+        
+                        CASE WHEN @Mid_num >= 2 THEN vp3.IP end ip3,
+                        CASE WHEN @Mid_num >= 2 THEN vp3.ssh end ssh3,
+        
+                        CASE WHEN @Mid_num >= 3 THEN vp4.IP end ip4,
+                        CASE WHEN @Mid_num >= 3 THEN vp4.ssh end ssh4,
+        
+                        CASE WHEN @Mid_num >= 4 THEN vp5.IP end ip5,
+                        CASE WHEN @Mid_num >= 4 THEN vp5.ssh end ssh5,
+                        D.Pem
+                        
+                        From Avatar A 
+                        left Join Vps on a.ID = vps.AvatarID
+                        left Join Vps vp2 on a.ID = vp2.AvatarID
+                        left Join Vps vp3 on a.ID = vp3.AvatarID
+                        left Join Vps vp4 on a.ID = vp4.AvatarID
+                        left Join Vps vp5 on a.ID = vp5.AvatarID
+                        left join Customers C on C.ID = A.CustomerID
+                        left join Type T on T.ID = vps.TypeID
+                        Left Join Domain D on D.ID = vps.DomainID
+                        WHERE
+                        C.Name =@cust and A.ID=@a
+                        and(
+                        (@Mid_num = 0 and vps.Position = 0) OR
+                        (@Mid_num = 1 and vps.Position = 0 and vp2.Position = 1) OR
+                        (@Mid_num = 2 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2) OR
+                        (@Mid_num = 3 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2 and vp4.Position = 3) OR
+                        (@Mid_num = 4 and vps.Position = 0 and vp2.Position = 1 and vp3.Position = 2 and vp4.Position = 3 and vp5.Position = 4))
+                  """, num_a,Customer)
+                result = cursor.fetchall()
+                num_a = num_a +1
+
+                for row_number, row_data in enumerate(result):
+                    self.tableWidget.insertRow(row_number)
+                    for column_number, data in enumerate(row_data):
+                        self.tableWidget.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+                        table= True
+
+                row_number = row_number + 1
+
+            msg3 = QMessageBox()
+            if(table == True):
+                msg3.setText("SQL query success")
+                x = msg3.exec_()
+            else:
+                msg3.setText("This search does not return any value\n\n              Please try again ")
+                x = msg3.exec_()
+
+
+class DataEntryScreen(QDialog):
+    def __init__(self):
+        super(DataEntryScreen, self).__init__()
+        loadUi("Dataentry.ui",self)
+        self.backbutton.clicked.connect(self.backtohome)
+        self.exitbutton.clicked.connect(self.closebutton)
+        self.insertavatar.clicked.connect(self.insert_avatar)
+        self.dateoffield.setButtonSymbols(2)
+
+
+        ##########Drop List value############
+        query_cus =  'SELECT * FROM Customers'
+        id_cus = sql.cursor()
+        id_cus.execute(query_cus)
+        customer_sql = id_cus.fetchall()
+        customer_list = []
+        for i in range (0, len(customer_sql)):
+            customer_list.append(customer_sql[i][1])
+
+
+        query_ty = 'SELECT * FROM Type'
+        id_ty = sql.cursor()
+        id_ty.execute(query_ty)
+        type_sql = id_ty.fetchall()
+        type_list = []
+        for i in range(0, len(type_sql)):
+            type_list.append(type_sql[i][1])
+
+        self.customerfield.addItems(customer_list)
+        self.typefield.addItems(type_list)
+        self.insertdomain.clicked.connect(self.insert_Domain)
+        self.insertvps.clicked.connect(self.insert_vps)
+        self.complete_button.clicked.connect(self.start_over)
+
+
+    def backtohome(self):
+        welcomescreen = WelcomeScreen()
+        widget.addWidget(welcomescreen)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def closebutton(self):
+        sys.exit(app.exec_())
+
+    def insert_avatar(self):
+        cursor = sql.cursor()
+
+        query =  'SELECT MAX(ID) FROM Avatar'
+        id_ex = sql.cursor()
+        id_ex.execute(query)
+        output = id_ex.fetchall()
+        id_num = output[0][0] +1
+
+        Customer = self.customerfield.currentText()
+        Name = self.namefield.text()
+        Address = self.addressfield.text()
+        Phone = self.phonefield.text()
+        Mail = self.mailfield.text()
+        Mail_pass = self.mailpassfield.text()
+
+        if (Name == "" or Address == "" or Phone == ""  or Mail == "" or Mail_pass == ""):
+            msg = QMessageBox()
+            msg.setText("All field are required to create an avatar")
+            x = msg.exec_()
+        else:
+            if Customer == "":
+                Customer = None
+            else:
+                query_cus = 'SELECT * FROM Customers'
+                id_ex = sql.cursor()
+                id_ex.execute(query_cus)
+                customer_sql = id_ex.fetchall()
+                customernum=0
+                for i in range(0, len(customer_sql)):
+                    if customer_sql[i][1] == Customer:
+                        customernum = i+1
+                Customer=customernum
+                print(Customer)
+                print(id_num)
+                print(Name)
+                print(Phone)
+                print(Mail)
+                print(Mail_pass)
+                print(Address)
+
+                ins_avatar = '''INSERT INTO Avatar(ID, Name, Phone, Mail,Mail_pass, Address,CustomerID) VALUES (?, ?, ?, ?, ?, ?,?)'''
+                cursor.execute(ins_avatar, (id_num, Name, Phone, Mail, Mail_pass, Address,Customer))
+
+            cursor.commit()
+            msg2 = QMessageBox()
+            msg2.setText("Insert Avatar number %s successfully" %id_num)
+            x = msg2.exec_()
+            self.insertavatar.setEnabled(False)
+
+
+            cursor.close()
+
+    def insert_Domain(self):
+        domain_query = 'SELECT MAX(ID) FROM Domain'
+        cursor = sql.cursor()
+        id_do = sql.cursor()
+        id_do.execute(domain_query)
+        output = id_do.fetchall()
+        domain_num = output[0][0] + 1
+
+        query = 'SELECT MAX(ID) FROM Avatar'
+        id_ex = sql.cursor()
+        id_ex.execute(query)
+        output = id_ex.fetchall()
+        AvatarID = output[0][0]
+
+        Domain_address = self.domainfield.text()
+        Date_of_purchased = self.dateoffield.text()
+        Domain_provider = self.domainprovfield.text()
+        Domain_pass = self.domainpassfield.text()
+        Crt_provider = self.crtprovfield.text()
+        Username = self.crtuserfield.text()
+        Crt_pass = self.crtpassfield.text()
+        Pem = self.pemfield.text()
+
+        if (Domain_address == "" == "" or Domain_provider == ""  or Domain_pass == "" or Crt_provider == ""
+        or Username == "" or Crt_pass == "" or Pem == ""):
+            msg = QMessageBox()
+            msg.setText("All field are required to create a Domain details")
+            x = msg.exec_()
+        else:
+            ins_domain = '''INSERT INTO DOMAIN(ID, AvatarID, Domain_address, Date_of_Purchased, Domain_provider, Domain_pass,
+                                                Crt_provider, Username, Crt_pass,Pem) VALUES(?,?,?,?,?,?,?,?,?,?)'''
+            cursor.execute(ins_domain, (domain_num,AvatarID,Domain_address, Date_of_purchased, Domain_provider, Domain_pass,
+                                          Crt_provider, Username, Crt_pass, Pem))
+            cursor.commit()
+            msg2 = QMessageBox()
+            msg2.setText("Insert Domain number %s successful" %AvatarID)
+            x = msg2.exec_()
+
+            self.insertdomain.setEnabled(False)
+
+            cursor.close()
+
+    def insert_vps(self):
+        print("get into vps")
+        cursor = sql.cursor()
+
+        vps_query = 'SELECT MAX(ID) FROM vps' ##Get last vps line
+        id_do = sql.cursor()
+        id_do.execute(vps_query)
+        output_vps = id_do.fetchall()
+        vps_num = output_vps[0][0] + 1
+        print("ID work")
+
+        query_av = 'SELECT MAX(ID) FROM Avatar' ##Get AvatarID
+        id_av = sql.cursor()
+        id_av.execute(query_av)
+        output_av = id_av.fetchall()
+        AvatarID = output_av[0][0]
+
+        domain_query = 'SELECT MAX(ID) FROM Domain' #Get DomainID
+        cursor = sql.cursor()
+        id_do = sql.cursor()
+        id_do.execute(domain_query)
+        output = id_do.fetchall()
+        DomainID = output[0][0]
+
+        print("ID id avarar")
+
+
+        Type = self.typefield.currentText()
+        provider = self.vpsprovfield.text()
+        provider_pass = self.vpsprovpassfield.text()
+        ip = self.ipfield.text()
+        ssh = self.sshfield.text()
+        Platform = self.platformfield.currentText()
+        Position = self.spinBox.value()
+
+
+        if (Type == "" == "" or provider == ""  or provider_pass == "" or ip == ""
+        or ssh == "" or Platform == ""):
+            msg = QMessageBox()
+            msg.setText("All field are required to create a VPS details")
+            x = msg.exec_()
+        else:
+            msg = QMessageBox()
+            msg.setText("get into else")
+            x = msg.exec_()
+
+            print(Type)
+            query_type = 'SELECT * FROM Type'  ##Get TypeID
+            id_ty = sql.cursor()
+            id_ty.execute(query_type)
+            type_sql = id_ty.fetchall()
+            typenum = 0
+            for i in range(0, len(type_sql)):
+                if type_sql[i][1] == Type:
+                    typenum = i + 1
+            Type = typenum
+
+            ins_vps = '''Insert Into VPS (ID,AvatarID,TypeID,DomainID,provider,provider_pass,ip,ssh,Position,Platform) 
+            Values (?,?,?,?,?,?,?,?,?,?)'''
+
+
+            cursor.execute(ins_vps,
+                           (vps_num, AvatarID, Type, DomainID, provider, provider_pass, ip, ssh, Position, Platform))
+
+            cursor.commit()
+            msg2 = QMessageBox()
+            msg2.setText("Insert VPS number %s successfully into avatar number %s" %(vps_num, AvatarID))#%AvatarID
+            x = msg2.exec_()
+
+            provider = self.vpsprovfield.setText('')
+            provider_pass = self.vpsprovpassfield.setText('')
+            ip = self.ipfield.setText('')
+            ssh = self.sshfield.setText('')
+            Position = self.spinBox.setValue(Position+1)
+
+            cursor.close()
+
+    def start_over(self):
+        msg = QMessageBox()
+        msg.setText("Insert completed successfully")
+        x = msg.exec_()
+        self.spinBox.setValue(0)
+        fields = [self.vpsprovfield, self.vpsprovpassfield, self.ipfield, self.sshfield,
+                  self.domainfield, self.domainprovfield, self.domainpassfield,
+                  self.crtprovfield, self.crtuserfield, self.crtpassfield,self.mailfield,self.pemfield,
+                  self.namefield, self.addressfield, self.phonefield, self.mailpassfield]  # .setText('')
+        for x in fields:
+            x.setText('')
+        self.insertdomain.setEnabled(True)
+        self.insertavatar.setEnabled(True)
+
+class Dataedit(QDialog):
+    def __init__(self):
+        super(Dataedit, self).__init__()
+        loadUi("Dataedit.ui",self)
+        self.backbutton.clicked.connect(self.backtohome)
+        self.exitbutton.clicked.connect(self.closebutton)
+        #self.updatebutton.clicked.connect(self.updateb)
+        self.pulldata.clicked.connect(self.pull)
+
+        query_cus = 'SELECT * FROM Customers'
+        id_cus = sql.cursor()
+        id_cus.execute(query_cus)
+        customer_sql = id_cus.fetchall()
+        customer_list = []
+        for i in range(0, len(customer_sql)):
+            customer_list.append(customer_sql[i][1])
+
+
+    def backtohome(self):
+        welcomescreen = WelcomeScreen()
+        widget.addWidget(welcomescreen)
+        widget.setCurrentIndex(widget.currentIndex() + 1)
+
+    def closebutton(self):
+        sys.exit(app.exec_())
+
+    def pull(self):
+
+        cursor = sql.cursor()
+        avatar_id = self.avatarid.text()
+        ############################Avatar#####################################
+        cursor.execute("""
+               select Name, Phone, Mail, Mail_pass, Address,CustomerID
+               from Avatar 
+               where ID = ?"""
+                       , avatar_id)
+        a=cursor.fetchall()
+        for i in range(0,6):
+            print(a[0][i])
+
+        self.namefield.setText(str(a[0][0]))
+        self.phonefield.setText(str(a[0][1]))
+        self.mailfield.setText(str(a[0][2]))
+        self.mailpassfield.setText(str(a[0][3]))
+        self.addressfield.setText(str(a[0][4]))
+        cursor.execute("""
+                       select Name
+                       from Customers 
+                       where ID = ?"""
+                       , int(a[0][5]))
+
+        self.customerfield.currentText(int(a[0][5]))
+        print ("OK")
+        msg4 = QMessageBox()
+        msg4.setText("not yet")
+        x = msg4.exec_()
+
+
+    # def updateb(self):
+    #     msg4 = QMessageBox()
+    #     msg4.setText("not yet")
+    #     x = msg4.exec_()
+
+
+# main
+app = QApplication(sys.argv)
+welcome = WelcomeScreen()
+widget = QtWidgets.QStackedWidget()
+widget.addWidget(welcome)
+widget.setFixedHeight(691)
+widget.setFixedWidth(1171)
+widget.show()
+try:
+    sys.exit(app.exec_())
+except:
+    print("Exiting")
